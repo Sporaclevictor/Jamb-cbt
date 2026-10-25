@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // >>> CHANGE THIS to your admin email (lowercase). Must match ADMIN_EMAIL in index.html
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'youradmin@email.com';
+    }
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function notBanned() { return signedIn() && me().banned != true; }
+    function isPaid() { return notBanned() && me().paid == true; }
+
+    // Price and bank details: everyone can read, only admin can edit
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Users: own profile readable; students can only create their own unpaid, unbanned profile
+    match /users/{uid} {
+      allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create: if signedIn() && request.auth.uid == uid
+                    && request.resource.data.paid == false
+                    && request.resource.data.banned == false;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Payment requests
+    match /payments/{id} {
+      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow create: if notBanned() && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.status == 'pending';
+      allow update, delete: if isAdmin();
+    }
+
+    // Questions: free trial questions for any active user, everything for paid users
+    match /questions/{id} {
+      allow read: if isAdmin() || (notBanned() && (resource.data.free == true || isPaid()));
+      allow write: if isAdmin();
+    }
+  }
+}
