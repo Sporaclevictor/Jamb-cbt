@@ -4,7 +4,7 @@ service cloud.firestore {
 
     // >>> CHANGE THIS to your admin email (lowercase). Must match ADMIN_EMAIL in index.html
     function isAdmin() {
-      return request.auth != null && request.auth.token.email == 'youradmin@email.com';
+      return request.auth != null && request.auth.token.email == 'sporaclevictor@email.com';
     }
     function signedIn() { return request.auth != null; }
     function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
